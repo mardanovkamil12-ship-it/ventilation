@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Вентиляция">
+<meta name="theme-color" content="#0F6E56">
+<title>Калькулятор вентиляции</title>
+<style>
+:root {
+  --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
+  --text:#1a1a1a;--text-muted:#666;--text-hint:#999;
+  --bg:#f5f5f3;--surface:#fff;--border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.18);
+  --radius:12px;--radius-sm:8px;
+  --ok-bg:#E1F5EE;--ok-text:#0F6E56;
+  --warn-bg:#FAEEDA;--warn-text:#854F0B;
+  --err-bg:#FCEBEB;--err-text:#A32D2D;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --teal:#5DCAA5;--teal-light:#04342C;--teal-mid:#1D9E75;
+    --text:#f0f0f0;--text-muted:#aaa;--text-hint:#666;
+    --bg:#111;--surface:#1c1c1e;--border:rgba(255,255,255,0.1);--border-strong:rgba(255,255,255,0.18);
+    --ok-bg:#04342C;--ok-text:#5DCAA5;
+    --warn-bg:#412402;--warn-text:#FAC775;
+    --err-bg:#501313;--err-text:#F09595;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px;}
+.header{background:var(--teal);color:white;padding:52px 20px 16px;}
+.header h1{font-size:20px;font-weight:600;letter-spacing:-0.3px;}
+.header p{font-size:12px;opacity:0.7;margin-top:2px;}
+
+/* Bottom tabs */
+.btabs{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:0.5px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.btab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 8px;font-size:10px;color:var(--text-hint);cursor:pointer;gap:3px;transition:color 0.15s;}
+.btab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.btab.active{color:var(--teal);}
+
+.page{display:none;padding:16px;max-width:480px;margin:0 auto;}
+.page.active{display:block;}
+
+/* Cards */
+.card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:16px;margin-bottom:12px;}
+.card-title{font-size:11px;font-weight:500;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;}
+
+/* Segmented */
+.seg{display:flex;background:var(--bg);border-radius:var(--radius-sm);padding:3px;gap:3px;}
+.seg-btn{flex:1;padding:8px 6px;border:none;border-radius:6px;background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.seg-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.12);}
+
+/* Fields */
+.field{margin-top:12px;}
+.field label{display:block;font-size:13px;color:var(--text-muted);margin-bottom:5px;}
+.field input{width:100%;height:44px;padding:0 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:17px;}
+.field input:focus{outline:none;border-color:var(--teal-mid);box-shadow:0 0 0 2px rgba(29,158,117,0.2);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+
+.area-chip{display:inline-flex;align-items:center;gap:6px;background:var(--teal-light);color:var(--ok-text);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:500;margin-top:12px;}
+
+/* Result */
+.result-big{text-align:center;padding:10px 0 4px;}
+.result-num{font-size:52px;font-weight:300;color:var(--text);line-height:1;letter-spacing:-2px;}
+.result-unit{font-size:15px;color:var(--text-muted);margin-top:4px;}
+.speed-hint{margin-top:10px;border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:500;}
+.speed-hint.ok{background:var(--teal-light);color:var(--ok-text);}
+.speed-hint.warn{background:var(--warn-bg);color:var(--warn-text);}
+.speed-hint.err{background:var(--err-bg);color:var(--err-text);}
+
+.btn-save{width:100%;height:50px;border:none;border-radius:var(--radius);background:var(--teal);color:white;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity 0.15s;}
+.btn-save:active{opacity:0.8;}
+
+/* History */
+.history-empty{text-align:center;padding:48px 20px;color:var(--text-hint);font-size:15px;line-height:1.6;}
+.hist-item{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px 16px;margin-bottom:10px;}
+.hist-comment{width:100%;margin-top:10px;padding:8px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;resize:none;line-height:1.4;}
+.hist-comment:focus{outline:none;border-color:var(--teal-mid);}
+.hist-result{font-size:22px;font-weight:500;}
+.hist-unit{font-size:13px;color:var(--text-muted);}
+.hist-params{font-size:12px;color:var(--text-hint);margin-top:3px;}
+.hist-time{font-size:12px;color:var(--text-hint);text-align:right;}
+.btn-del{width:30px;height:30px;border:none;border-radius:50%;background:var(--err-bg);color:var(--err-text);cursor:pointer;font-size:16px;font-weight:500;display:flex;align-items:center;justify-content:center;margin-left:10px;}
+.btn-clear{width:100%;padding:12px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:transparent;color:var(--err-text);font-size:14px;font-weight:500;cursor:pointer;margin-top:4px;}
+
+/* Section picker table */
+.sect-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+.sect-table th{font-size:11px;font-weight:500;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.3px;padding:6px 8px;text-align:left;border-bottom:0.5px solid var(--border);}
+.sect-table td{padding:8px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+.sect-table tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:500;}
+.badge.ok{background:var(--teal-light);color:var(--ok-text);}
+.badge.warn{background:var(--warn-bg);color:var(--warn-text);}
+.badge.err{background:var(--err-bg);color:var(--err-text);}
+
+/* Range slider */
+.range-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.range-row input[type=range]{flex:1;}
+.range-val{font-size:15px;font-weight:500;color:var(--text);min-width:40px;text-align:right;}
+
+/* Norms */
+.norm-search{width:100%;height:44px;padding:0 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:15px;margin-bottom:12px;}
+.norm-search:focus{outline:none;border-color:var(--teal-mid);}
+.norm-item{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:14px 16px;margin-bottom:10px;}
+.norm-name{font-size:15px;font-weight:500;color:var(--text);}
+.norm-cat{font-size:11px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;}
+.norm-vals{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.norm-chip{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:var(--teal-light);color:var(--ok-text);}
+.norm-note{font-size:12px;color:var(--text-hint);margin-top:6px;line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>МК Инжиниринг</h1>
+  <p>Пусконаладочный калькулятор</p>
+</div>
+
+<!-- PAGES -->
+<div class="page active" id="page-calc">
+
+  <div class="card">
+    <div class="card-title">Режим расчёта</div>
+    <div class="seg">
+      <button class="seg-btn active" onclick="setMode('flow')" id="btn-flow">Расход →</button>
+      <button class="seg-btn" onclick="setMode('speed')" id="btn-speed">Скорость →</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Сечение воздуховода</div>
+    <div class="seg">
+      <button class="seg-btn active" onclick="setShape('rect')" id="sh-rect">Прямоугольный</button>
+      <button class="seg-btn" onclick="setShape('round')" id="sh-round">Круглый</button>
+    </div>
+    <div id="dims-rect">
+      <div class="field-row">
+        <div class="field"><label>Ширина a, мм</label><input type="number" id="width" value="400" inputmode="decimal" step="50" oninput="calc()"></div>
+        <div class="field"><label>Высота b, мм</label><input type="number" id="height" value="200" inputmode="decimal" step="50" oninput="calc()"></div>
+      </div>
+    </div>
+    <div id="dims-round" style="display:none">
+      <div class="field">
+        <label>Диаметр D, мм</label>
+        <select id="diam" onchange="calc()" style="width:100%;height:44px;padding:0 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:17px;appearance:none;-webkit-appearance:none;">
+          <option value="100">100</option>
+          <option value="125">125</option>
+          <option value="160">160</option>
+          <option value="200">200</option>
+          <option value="250">250</option>
+          <option value="315" selected>315</option>
+          <option value="355">355</option>
+          <option value="400">400</option>
+          <option value="450">450</option>
+          <option value="500">500</option>
+          <option value="560">560</option>
+          <option value="630">630</option>
+          <option value="710">710</option>
+          <option value="800">800</option>
+          <option value="900">900</option>
+          <option value="1000">1000</option>
+          <option value="1120">1120</option>
+          <option value="1250">1250</option>
+          <option value="1400">1400</option>
+          <option value="1600">1600</option>
+          <option value="1800">1800</option>
+          <option value="2000">2000</option>
+        </select>
+      </div>
+    </div>
+    <div class="area-chip" id="area-chip">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+      <span id="area-val">—</span> м²
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Коэффициент живого сечения</div>
+    <div class="field">
+      <label>Кжс (для решёток, диффузоров; 1 = воздуховод без вставок)</label>
+      <input type="number" id="kzs" value="1" inputmode="decimal" step="0.01" min="0.01" max="1" oninput="calc()">
+    </div>
+  </div>
+
+  <div class="card" id="card-speed-input">
+    <div class="card-title">Скорость воздуха</div>
+    <div class="field"><label>м/с</label><input type="number" id="speed" value="4" inputmode="decimal" step="0.1" oninput="calc()"></div>
+  </div>
+  <div class="card" id="card-flow-input" style="display:none">
+    <div class="card-title">Расход воздуха</div>
+    <div class="field"><label>м³/ч</label><input type="number" id="flow-in" value="1000" inputmode="decimal" oninput="calc()"></div>
+  </div>
+
+  <div class="card">
+    <div class="result-big">
+      <div class="result-num" id="result-val">—</div>
+      <div class="result-unit" id="result-unit">м³/ч</div>
+    </div>
+    <div class="speed-hint ok" id="speed-hint"></div>
+    <button class="btn-save" onclick="saveToHistory()">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l3 3 9-9"/></svg>
+      Сохранить в историю
+    </button>
+    <div style="text-align:center;margin-top:14px;">
+      <button onclick="document.getElementById('help-modal').style.display='flex'" style="background:none;border:none;color:var(--teal);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;">
+        📖 Справка по расчётам
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- HELP MODAL -->
+<div id="help-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;">
+  <div style="background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:20px 20px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <span style="font-size:17px;font-weight:600;color:var(--text);">Справка по расчётам</span>
+      <button onclick="document.getElementById('help-modal').style.display='none'" style="background:none;border:none;font-size:24px;color:var(--text-muted);cursor:pointer;line-height:1;">×</button>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Расход воздуха L</div>
+      <p style="font-size:15px;color:var(--text);line-height:1.6;margin-bottom:10px;">Объёмный расход — это количество воздуха, которое проходит через сечение воздуховода за один час. Измеряется в м³/ч.</p>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px;font-size:15px;font-weight:500;color:var(--text);letter-spacing:0.2px;">
+        L = 3600 × F × Кжс × V
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--text-muted);line-height:1.7;">
+        <b>L</b> — расход воздуха, м³/ч<br>
+        <b>F</b> — площадь сечения воздуховода, м²<br>
+        <b>Кжс</b> — коэффициент живого сечения<br>
+        <b>V</b> — скорость воздуха, м/с<br>
+        <b>3600</b> — перевод секунд в часы
+      </div>
+    </div>
+
+    <div style="height:0.5px;background:var(--border);margin-bottom:20px;"></div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Скорость воздуха V</div>
+      <p style="font-size:15px;color:var(--text);line-height:1.6;margin-bottom:10px;">Скорость движения воздуха в сечении воздуховода. Измеряется в м/с. Определяется анемометром непосредственно при замере.</p>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px;font-size:15px;font-weight:500;color:var(--text);">
+        V = L ÷ (3600 × F × Кжс)
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--text-muted);line-height:1.6;">
+        Рекомендуемые значения скорости:<br>
+        — магистральные воздуховоды: 4–8 м/с<br>
+        — ответвления: 2–5 м/с<br>
+        — решётки и диффузоры: 1.5–3 м/с
+      </div>
+    </div>
+
+    <div style="height:0.5px;background:var(--border);margin-bottom:20px;"></div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Коэффициент живого сечения Кжс</div>
+      <p style="font-size:15px;color:var(--text);line-height:1.6;margin-bottom:10px;">Показывает, какую долю от общей площади сечения занимает открытая часть — через которую реально проходит воздух. Остальное — это перемычки, лопасти, рамка решётки.</p>
+      <p style="font-size:15px;color:var(--text);line-height:1.6;margin-bottom:10px;">Если замер выполняется прямо в воздуховоде — Кжс = 1. Если через решётку или диффузор — берётся из паспорта оборудования.</p>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:var(--text-muted);line-height:1.7;">
+        Типовые значения:<br>
+        — жалюзийные решётки: 0.6–0.8<br>
+        — перфорированные панели: 0.2–0.5<br>
+        — диффузоры потолочные: 0.5–0.7<br>
+        — воздуховод без вставок: <b>1.0</b>
+      </div>
+    </div>
+
+    <div style="height:0.5px;background:var(--border);margin-bottom:20px;"></div>
+
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Площадь сечения F</div>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:var(--text-muted);line-height:1.9;">
+        Прямоугольный воздуховод:<br>
+        <span style="font-size:15px;font-weight:500;color:var(--text);">F = a × b</span> (стороны в метрах)<br><br>
+        Круглый воздуховод:<br>
+        <span style="font-size:15px;font-weight:500;color:var(--text);">F = π × (D/2)²</span> (диаметр в метрах)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION PICKER -->
+<div class="page" id="page-picker">
+  <div class="card">
+    <div class="card-title">Расход воздуха</div>
+    <div class="field"><label>м³/ч</label><input type="number" id="p-flow" value="1000" inputmode="decimal" oninput="renderPicker()"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Норма скорости</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-muted);margin-bottom:4px;">
+      <span>от <span id="vmin-lbl">2</span> м/с</span>
+      <span>до <span id="vmax-lbl">4</span> м/с</span>
+    </div>
+    <div class="range-row">
+      <span style="font-size:12px;color:var(--text-hint)">1</span>
+      <input type="range" id="vmin" min="1" max="8" step="0.5" value="2" oninput="syncRange('min')">
+      <span style="font-size:12px;color:var(--text-hint)">8</span>
+    </div>
+    <div class="range-row">
+      <span style="font-size:12px;color:var(--text-hint)">1</span>
+      <input type="range" id="vmax" min="1" max="8" step="0.5" value="4" oninput="syncRange('max')">
+      <span style="font-size:12px;color:var(--text-hint)">8</span>
+    </div>
+    <div class="seg" style="margin-top:12px;">
+      <button class="seg-btn active" onclick="setPickerShape('rect')" id="psh-rect">Прямоугольные</button>
+      <button class="seg-btn" onclick="setPickerShape('round')" id="psh-round">Круглые</button>
+    </div>
+  </div>
+  <div class="card" style="padding:12px 0 4px;">
+    <table class="sect-table" id="picker-table">
+      <thead><tr><th>Сечение</th><th>Площадь, м²</th><th>Скорость, м/с</th><th>Оценка</th></tr></thead>
+      <tbody id="picker-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- NORMS -->
+<div class="page" id="page-norms">
+  <input class="norm-search" type="search" id="norm-search" placeholder="Поиск помещения..." oninput="renderNorms()">
+  <div id="norms-list"></div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div id="history-list"></div>
+  <button class="btn-clear" id="btn-clear-all" onclick="clearHistory()" style="display:none">Очистить всю историю</button>
+</div>
+
+<!-- BOTTOM TABS -->
+<div class="btabs">
+  <div class="btab active" onclick="showPage('calc')" id="tab-calc">
+    <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10h8M8 14h4"/></svg>
+    Расчёт
+  </div>
+  <div class="btab" onclick="showPage('picker')" id="tab-picker">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="7" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="17" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+    Сечения
+  </div>
+  <div class="btab" onclick="showPage('norms')" id="tab-norms">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+    Нормы
+  </div>
+  <div class="btab" onclick="showPage('history')" id="tab-history">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    <span id="hist-tab-lbl">История</span>
+  </div>
+</div>
+
+<script>
+// ── CALC ──────────────────────────────────────────────
+let mode='flow', shape='rect';
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btn-flow').classList.toggle('active',m==='flow');
+  document.getElementById('btn-speed').classList.toggle('active',m==='speed');
+  document.getElementById('card-speed-input').style.display=m==='flow'?'':'none';
+  document.getElementById('card-flow-input').style.display=m==='speed'?'':'none';
+  document.getElementById('result-unit').textContent=m==='flow'?'м³/ч':'м/с';
+  calc();
+}
+function setShape(s){
+  shape=s;
+  document.getElementById('sh-rect').classList.toggle('active',s==='rect');
+  document.getElementById('sh-round').classList.toggle('active',s==='round');
+  document.getElementById('dims-rect').style.display=s==='rect'?'':'none';
+  document.getElementById('dims-round').style.display=s==='round'?'':'none';
+  calc();
+}
+function getArea(){
+  if(shape==='rect'){
+    const a=parseFloat(document.getElementById('width').value)/1000;
+    const b=parseFloat(document.getElementById('height').value)/1000;
+    return a*b;
+  } else {
+    const d=parseFloat(document.getElementById('diam').value)/1000;
+    return Math.PI*(d/2)*(d/2);
+  }
+}
+let lastResult=null;
+function calc(){
+  const area=getArea();
+  if(!isFinite(area)||area<=0){document.getElementById('area-val').textContent='—';document.getElementById('result-val').textContent='—';lastResult=null;return;}
+  document.getElementById('area-val').textContent=area.toFixed(4);
+  const kzs=Math.min(1,Math.max(0.01,parseFloat(document.getElementById('kzs').value)||1));
+  const effArea=area*kzs;
+  let v,L;
+  if(mode==='flow'){
+    v=parseFloat(document.getElementById('speed').value);
+    if(!isFinite(v)||v<0){document.getElementById('result-val').textContent='—';lastResult=null;return;}
+    L=effArea*v*3600;
+    document.getElementById('result-val').textContent=Math.round(L);
+    lastResult={mode,shape,area,kzs,v,L:Math.round(L)};
+  } else {
+    L=parseFloat(document.getElementById('flow-in').value);
+    if(!isFinite(L)||L<=0){document.getElementById('result-val').textContent='—';lastResult=null;return;}
+    v=L/3600/effArea;
+    document.getElementById('result-val').textContent=v.toFixed(2);
+    lastResult={mode,shape,area,kzs,v:parseFloat(v.toFixed(2)),L};
+  }
+  updateHint(v);
+}
+function updateHint(v){
+  const el=document.getElementById('speed-hint');
+  el.className='speed-hint';
+  if(v<2){el.textContent='⚠ Низкая скорость — осаждение пыли';el.classList.add('warn');}
+  else if(v>8){el.textContent='⚠ Очень высокая — шум и большие потери давления';el.classList.add('err');}
+  else if(v>6){el.textContent='⚠ Повышенный шум';el.classList.add('warn');}
+  else{el.textContent='✓ Скорость в норме (2–6 м/с)';el.classList.add('ok');}
+}
+
+// ── SECTION PICKER ────────────────────────────────────
+let pickerShape='rect';
+const rectSections=[
+  [100,100],[150,100],[200,100],[150,150],[200,150],[250,150],
+  [200,200],[300,150],[250,200],[300,200],[400,150],[350,200],
+  [400,200],[500,150],[300,300],[400,250],[500,200],[600,150],
+  [400,300],[500,250],[600,200],[400,400],[500,300],[600,250],
+  [700,200],[500,400],[600,300],[700,250],[800,200],[600,400],
+  [700,300],[800,250],[900,200],[700,400],[800,300],[1000,250],
+  [800,400],[900,300],[1000,300],[1200,300],[1000,400],[1200,400]
+];
+const roundDiams=[100,125,160,200,250,315,355,400,450,500,560,630,710,800,900,1000];
+
+function setPickerShape(s){
+  pickerShape=s;
+  document.getElementById('psh-rect').classList.toggle('active',s==='rect');
+  document.getElementById('psh-round').classList.toggle('active',s==='round');
+  renderPicker();
+}
+function syncRange(which){
+  let mn=parseFloat(document.getElementById('vmin').value);
+  let mx=parseFloat(document.getElementById('vmax').value);
+  if(which==='min'&&mn>mx){document.getElementById('vmin').value=mx;mn=mx;}
+  if(which==='max'&&mx<mn){document.getElementById('vmax').value=mn;mx=mn;}
+  document.getElementById('vmin-lbl').textContent=mn.toFixed(1);
+  document.getElementById('vmax-lbl').textContent=mx.toFixed(1);
+  renderPicker();
+}
+function renderPicker(){
+  const L=parseFloat(document.getElementById('p-flow').value)||0;
+  const vmin=parseFloat(document.getElementById('vmin').value);
+  const vmax=parseFloat(document.getElementById('vmax').value);
+  const tbody=document.getElementById('picker-body');
+  let rows=[];
+  if(pickerShape==='rect'){
+    rectSections.forEach(([a,b])=>{
+      const area=(a/1000)*(b/1000);
+      const v=L/3600/area;
+      rows.push({label:`${a}×${b}`,area,v});
+    });
+  } else {
+    roundDiams.forEach(d=>{
+      const area=Math.PI*(d/2000)*(d/2000);
+      const v=L/3600/area;
+      rows.push({label:`Ø${d}`,area,v});
+    });
+  }
+  rows.sort((a,b)=>a.area-b.area);
+  tbody.innerHTML=rows.map(r=>{
+    let cls,label;
+    if(r.v<vmin){cls='err';label='Мало';}
+    else if(r.v>vmax){cls='warn';label='Много';}
+    else{cls='ok';label='✓ Норма';}
+    const highlight=cls==='ok'?'background:var(--ok-bg);':cls==='err'?'opacity:0.5;':'';
+    return `<tr style="${highlight}">
+      <td style="font-weight:500">${r.label}</td>
+      <td style="color:var(--text-muted)">${r.area.toFixed(4)}</td>
+      <td style="font-weight:500">${r.v.toFixed(2)}</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── NORMS ─────────────────────────────────────────────
+const NORMS=[
+  {cat:'Жилые помещения',name:'Жилая комната',mult:'1–3',sp:'СП 60.13330.2020 п.9.1, СП 54.13330.2022',note:'Не менее 30 м³/ч на человека.'},
+  {cat:'Жилые помещения',name:'Кухня с электроплитой',mult:'—',sp:'СП 60.13330.2020 прил.М',note:'Не менее 60 м³/ч вытяжки.'},
+  {cat:'Жилые помещения',name:'Кухня с газовой плитой',mult:'—',sp:'СП 60.13330.2020 прил.М, СП 62.13330.2021',note:'Не менее 90 м³/ч вытяжки при 4 конфорках.'},
+  {cat:'Жилые помещения',name:'Санузел совмещённый',mult:'—',sp:'СП 60.13330.2020 прил.М',note:'Не менее 50 м³/ч вытяжки.'},
+  {cat:'Жилые помещения',name:'Ванная / туалет (раздельные)',mult:'—',sp:'СП 60.13330.2020 прил.М',note:'25 м³/ч каждый.'},
+  {cat:'Офисные',name:'Офис открытого типа',mult:'3–6',sp:'СП 60.13330.2020, СанПиН 1.2.3685-21 табл.5.1',note:'Не менее 60 м³/ч на человека.'},
+  {cat:'Офисные',name:'Переговорная / конференц-зал',mult:'6–10',sp:'СП 60.13330.2020, СанПиН 1.2.3685-21',note:'Повышенная нагрузка — много людей на м².'},
+  {cat:'Офисные',name:'Серверная / IT',mult:'10–15',sp:'СП 60.13330.2020 (теплосъём)',note:'Приоритет — теплосъём, не нормы воздухообмена.'},
+  {cat:'Офисные',name:'Коридор / холл офиса',mult:'1–2',sp:'СП 60.13330.2020',note:''},
+  {cat:'Общепит',name:'Обеденный зал ресторана',mult:'8–12',sp:'СП 118.13330.2022, СанПиН 2.3/2.4.3590-20',note:'Учитывать тепло- и запаховыделения.'},
+  {cat:'Общепит',name:'Столовая / кафе',mult:'6–10',sp:'СП 118.13330.2022, СанПиН 2.3/2.4.3590-20',note:''},
+  {cat:'Общепит',name:'Кухня ресторана (горячий цех)',mult:'—',sp:'СП 118.13330.2022, СанПиН 2.3/2.4.3590-20',note:'Местная вытяжка над оборудованием + компенсация. Не менее 100 м³/ч на кВт тепловой мощности.'},
+  {cat:'Общепит',name:'Барная стойка',mult:'6–8',sp:'СП 118.13330.2022',note:''},
+  {cat:'Торговые',name:'Торговый зал (магазин)',mult:'3–5',sp:'СП 118.13330.2022, СанПиН 1.2.3685-21',note:'Не менее 20 м³/ч на покупателя.'},
+  {cat:'Торговые',name:'Торговый центр (общая зона)',mult:'4–6',sp:'СП 118.13330.2022',note:''},
+  {cat:'Торговые',name:'Примерочная',mult:'5–8',sp:'СП 118.13330.2022',note:''},
+  {cat:'Медицинские',name:'Палата общая',mult:'2–4',sp:'СП 158.13330.2014 прил.А',note:'Не менее 80 м³/ч на койку.'},
+  {cat:'Медицинские',name:'Операционная',mult:'10–20',sp:'СП 158.13330.2014 прил.А, ГОСТ Р 52539',note:'100% свежий воздух, HEPA-фильтрация, избыточное давление.'},
+  {cat:'Медицинские',name:'Процедурный кабинет',mult:'4–6',sp:'СП 158.13330.2014 прил.А',note:''},
+  {cat:'Медицинские',name:'Рентгенкабинет',mult:'4–6',sp:'СП 158.13330.2014, СанПиН 2.6.1.1192-03',note:'Вытяжка с избытком — отрицательное давление.'},
+  {cat:'Спортивные',name:'Тренажёрный зал',mult:'5–8',sp:'СП 332.1325800.2017, СанПиН 2.4.4.3172-14',note:'Не менее 80 м³/ч на человека при активной нагрузке.'},
+  {cat:'Спортивные',name:'Бассейн (зал воды)',mult:'4–6',sp:'СП 31-113-2004',note:'Борьба с испарением — осушение воздуха.'},
+  {cat:'Спортивные',name:'Раздевалка / душевая',mult:'5–8',sp:'СП 332.1325800.2017',note:''},
+  {cat:'Спортивные',name:'Спортзал (игровой)',mult:'5–8',sp:'СП 332.1325800.2017',note:''},
+  {cat:'Производственные',name:'Лёгкое производство',mult:'3–5',sp:'СП 60.13330.2020, ГОСТ 12.1.005-88',note:'Зависит от категории вредностей.'},
+  {cat:'Производственные',name:'Сварочный участок',mult:'—',sp:'ГОСТ 12.3.003-86, СП 60.13330.2020',note:'Местная вытяжка обязательна. Общий — от расчёта вредностей.'},
+  {cat:'Производственные',name:'Покрасочная камера',mult:'—',sp:'СП 60.13330.2020, ГОСТ Р 50574',note:'Скорость в зоне окраски 0.5–1.0 м/с, 100% вытяжка.'},
+  {cat:'Производственные',name:'Склад',mult:'1–2',sp:'СП 60.13330.2020, СП 56.13330.2021',note:''},
+  {cat:'Гостиничные',name:'Номер гостиницы',mult:'2–3',sp:'СП 257.1325800.2016',note:'Не менее 30 м³/ч на человека.'},
+  {cat:'Гостиничные',name:'Лобби / ресепшен',mult:'3–5',sp:'СП 257.1325800.2016',note:''},
+  {cat:'Гостиничные',name:'Конференц-зал отеля',mult:'8–12',sp:'СП 257.1325800.2016, СП 60.13330.2020',note:''},
+  {cat:'Детские учреждения',name:'Классная комната',mult:'3–5',sp:'СП 251.1325800.2016, СанПиН 2.4.3648-20',note:'Не менее 16 м³/ч на ребёнка.'},
+  {cat:'Детские учреждения',name:'Спальня детского сада',mult:'1.5–2.5',sp:'СП 251.1325800.2016, СанПиН 2.4.3648-20',note:''},
+  {cat:'Детские учреждения',name:'Игровая комната',mult:'3–5',sp:'СП 251.1325800.2016, СанПиН 2.4.3648-20',note:''},
+];
+
+function renderNorms(){
+  const q=(document.getElementById('norm-search').value||'').toLowerCase();
+  const filtered=NORMS.filter(n=>!q||n.name.toLowerCase().includes(q)||n.cat.toLowerCase().includes(q));
+  let lastCat='';
+  document.getElementById('norms-list').innerHTML=filtered.map(n=>{
+    let catHdr='';
+    if(n.cat!==lastCat){lastCat=n.cat;catHdr=`<div style="font-size:11px;font-weight:500;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 6px;padding-left:2px;">${n.cat}</div>`;}
+    return catHdr+`<div class="norm-item">
+      <div class="norm-name">${n.name}</div>
+      <div class="norm-vals">
+        ${n.mult!=='—'?`<span class="norm-chip">Кратность: ${n.mult} об/ч</span>`:'<span class="norm-chip" style="background:var(--warn-bg);color:var(--warn-text)">Местная вытяжка</span>'}
+      </div>
+      ${n.note?`<div class="norm-note">${n.note}</div>`:''}
+      <div style="margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border);font-size:11px;color:var(--text-hint);">📄 ${n.sp}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── HISTORY ───────────────────────────────────────────
+function getHistory(){try{return JSON.parse(localStorage.getItem('vent_history')||'[]');}catch{return[];}}
+function saveHistory(h){localStorage.setItem('vent_history',JSON.stringify(h));}
+
+function saveToHistory(){
+  if(!lastResult)return;
+  const h=getHistory();
+  const now=new Date();
+  h.unshift({id:Date.now(),...lastResult,time:now.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}),date:now.toLocaleDateString('ru',{day:'2-digit',month:'2-digit'})});
+  saveHistory(h);
+  const btn=document.querySelector('.btn-save');
+  const orig=btn.innerHTML;
+  btn.innerHTML='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10l4 4 8-8"/></svg> Сохранено!';
+  btn.style.background='#1D9E75';
+  setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';},1400);
+  updateHistTab();
+}
+function updateHistTab(){
+  const h=getHistory();
+  document.getElementById('hist-tab-lbl').textContent=h.length?`История (${h.length})`:'История';
+}
+function describeEntry(e){
+  const sh=e.shape==='rect'?'прям.':'кругл.';
+  const dims=e.area?`${e.area.toFixed(4)} м²`:'';
+  return e.mode==='flow'?`${sh} ${dims} · ${e.v} м/с`:`${sh} ${dims} · ${Math.round(e.L)} м³/ч`;
+}
+function renderHistory(){
+  const h=getHistory();
+  const list=document.getElementById('history-list');
+  const btn=document.getElementById('btn-clear-all');
+  if(!h.length){list.innerHTML='<div class="history-empty">Нет сохранённых расчётов.<br>Сделай расчёт и нажми «Сохранить».</div>';btn.style.display='none';return;}
+  btn.style.display='';
+  list.innerHTML=h.map(e=>`
+    <div class="hist-item">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div><span class="hist-result">${e.mode==='flow'?Math.round(e.L):e.v.toFixed(2)}</span><span class="hist-unit"> ${e.mode==='flow'?'м³/ч':'м/с'}</span></div>
+          <div class="hist-params">${describeEntry(e)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:10px;">
+          <div class="hist-time">${e.date}<br>${e.time}</div>
+          <button class="btn-del" onclick="deleteEntry(${e.id})">×</button>
+        </div>
+      </div>
+      <textarea class="hist-comment" rows="2" placeholder="Комментарий (помещение, система, замечание...)" oninput="saveComment(${e.id},this.value)">${e.comment||''}</textarea>
+    </div>`).join('');
+}
+function deleteEntry(id){saveHistory(getHistory().filter(e=>e.id!==id));renderHistory();updateHistTab();}
+function saveComment(id,text){const h=getHistory();const idx=h.findIndex(e=>e.id===id);if(idx>=0){h[idx].comment=text;saveHistory(h);}}
+function clearHistory(){if(confirm('Удалить всю историю?')){localStorage.removeItem('vent_history');renderHistory();updateHistTab();}}
+
+// ── NAVIGATION ────────────────────────────────────────
+function showPage(p){
+  ['calc','picker','norms','history'].forEach(id=>{
+    document.getElementById('page-'+id).classList.toggle('active',id===p);
+    document.getElementById('tab-'+id).classList.toggle('active',id===p);
+  });
+  if(p==='history')renderHistory();
+  if(p==='norms')renderNorms();
+  if(p==='picker')renderPicker();
+}
+
+// ── INIT ──────────────────────────────────────────────
+calc();
+updateHistTab();
+renderPicker();
+renderNorms();
+</script>
+<div style="text-align:center;padding:16px;font-size:11px;color:var(--text-hint);line-height:1.6;">
+  Интеллектуальная собственность ООО «МК Инжиниринг»<br>ИНН: 1686027750
+</div>
+</body>
+</html>
